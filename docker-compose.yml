@@ -1,0 +1,30 @@
+services:
+  busexplorer.blazor:
+    image: ${DOCKER_REGISTRY-}busexplorerblazor
+    build:
+      context: .
+      dockerfile: src/BusExplorer.Blazor/Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - busexplorer.api
+
+  busexplorer.api:
+    image: ${DOCKER_REGISTRY-}busexplorerapi
+    build:
+      context: .
+      dockerfile: src/BusExplorer.Api/Dockerfile
+    ports:
+      - "5001:8080"
+    depends_on:
+      - db
+
+  db:
+    image: postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=busexplorer
+    ports:
+      - "5432:5432"
