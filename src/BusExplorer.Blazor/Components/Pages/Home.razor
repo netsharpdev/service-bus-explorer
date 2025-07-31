@@ -1,6 +1,16 @@
 ﻿@page "/"
 @using BusExplorer.Data.Models
-@inject HttpClient Http
+@inject IHttpClientFactory HttpClientFactory
+
+@code {
+    private HttpClient _httpClient;
+
+    protected override void OnInitialized()
+    {
+        _httpClient = HttpClientFactory.CreateClient("BusExplorer");
+    }
+}
+
 
 <PageTitle>Home</PageTitle>
 
@@ -46,12 +56,12 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        connections = await Http.GetFromJsonAsync<ServiceBusConnection[]>("ServiceBusConnections");
+        connections = await _httpClient.GetFromJsonAsync<ServiceBusConnection[]>("ServiceBusConnections");
     }
 
     private async Task AddConnection()
     {
-        await Http.PostAsJsonAsync("ServiceBusConnections", newConnection);
+        await _httpClient.PostAsJsonAsync("ServiceBusConnections", newConnection);
         newConnection = new();
         await OnInitializedAsync();
     }

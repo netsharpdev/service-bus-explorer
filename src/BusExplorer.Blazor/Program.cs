@@ -17,7 +17,12 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("/") });
+builder.Services.AddHttpClient("BusExplorer", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["BaseUrl"] ?? "http://localhost:8080");
+});
+
+
 
 var app = builder.Build();
 
@@ -44,13 +49,8 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
+app.UseSwagger();
+app.UseSwaggerUI();
 app.UseHttpsRedirection();
 
 app.UseStaticFiles();
