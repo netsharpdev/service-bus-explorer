@@ -44,7 +44,7 @@ else
 
 <h2>Add New Connection</h2>
 
-<EditForm Model="@newConnection" OnValidSubmit="@AddConnection">
+<EditForm Model="@newConnection" FormName="AddConnections" OnValidSubmit="@AddConnection">
     <DataAnnotationsValidator />
     <ValidationSummary />
 
@@ -57,7 +57,7 @@ else
         <InputText @bind-Value="newConnection.ConnectionString" />
     </p>
 
-    <button type="submit">Add</button>
+    <button class="btn-primary" type="submit">Add</button>
 </EditForm>
 
 @code {
