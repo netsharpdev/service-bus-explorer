@@ -4,6 +4,7 @@
 
 @code {
     private HttpClient _httpClient;
+    private ServiceBusConnection? selectedConnection;
 
     protected override void OnInitialized()
     {
@@ -14,7 +15,15 @@
 
 <PageTitle>Home</PageTitle>
 
-<h1>Service Bus Connections</h1>
+<h1>Service Bus Explorer</h1>                                                                                                             
+                                                                                                                                            
+ @if (selectedConnection != null)
+ {
+     <h2>Selected Connection: @selectedConnection.Name</h2>
+     <p>Connection String: @selectedConnection.ConnectionString</p>
+ }
+
+ <h2>Available Connections</h2>
 
 @if (connections == null)
 {
@@ -22,12 +31,13 @@
 }
 else
 {
-    <ul>
+    <select @onchange="OnConnectionSelected">
+        <option value="">-- Select a Connection --</option>
         @foreach (var connection in connections)
         {
-            <li>@connection.Name: @connection.ConnectionString</li>
+            <option value="@connection.Id">@connection.Name</option>
         }
-    </ul>
+    </select>
 }
 
 <hr />
@@ -65,4 +75,19 @@ else
         newConnection = new();
         await OnInitializedAsync();
     }
+
+    private void OnConnectionSelected(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int connectionId))
+        {
+            selectedConnection = connections?.FirstOrDefault(c => c.Id == connectionId);
+        }
+        else
+        {
+            selectedConnection = null;
+        }
+
+        StateHasChanged();
+    }
+
 }
