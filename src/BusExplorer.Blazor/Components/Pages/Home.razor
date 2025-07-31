@@ -5,15 +5,7 @@
 
 <PageTitle>Home</PageTitle>
 
-<h1>Service Bus Explorer</h1>                                                                                                             
-                                                                                                                                            
-@if (selectedConnection != null)
-{
-    <h2>Selected Connection: @selectedConnection.Name</h2>
-    <p>Connection String: @selectedConnection.ConnectionString</p>
-}
-
-<h2>Available Connections</h2>
+<h1>Service Bus Explorer</h1>
 
 @if (connections == null)
 {
@@ -28,44 +20,12 @@ else
             <option value="@connection.Id">@connection.Name</option>
         }
     </select>
-
-    <h3>Debug: Fetched Connections</h3>
-    @if (connections != null)
-    {
-        <ul>
-            @foreach (var connection in connections)
-            {
-                <li>ID: @connection.Id, Name: @connection.Name, ConnectionString: @connection.ConnectionString</li>
-            }
-        </ul>
-    }
 }
-
-<hr />
-
-<h2>Add New Connection</h2>
-
-<EditForm Model="@newConnection" FormName="AddConnections" OnValidSubmit="@AddConnection">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
-
-    <p>
-        <label>Name:</label>
-        <InputText @bind-Value="newConnection.Name" />
-    </p>
-    <p>
-        <label>Connection String:</label>
-        <InputText @bind-Value="newConnection.ConnectionString" />
-    </p>
-
-    <button class="btn-primary" type="submit">Add</button>
-</EditForm>
 
 @code {
     private HttpClient _httpClient;
     private ServiceBusConnection? selectedConnection;
     private ServiceBusConnection[]? connections;
-    private ServiceBusConnection newConnection = new();
     private int selectedConnectionId;
 
     protected override void OnInitialized()
@@ -78,24 +38,15 @@ else
         connections = await _httpClient.GetFromJsonAsync<ServiceBusConnection[]>("ServiceBusConnections");
     }
 
-    private async Task AddConnection()
-    {
-        await _httpClient.PostAsJsonAsync("ServiceBusConnections", newConnection);
-        newConnection = new();
-        await OnInitializedAsync();
-    }
-
     private async Task OnChangeConnection(ChangeEventArgs e)
     {
         if (int.TryParse(e.Value?.ToString(), out int id))
         {
             selectedConnection = connections?.FirstOrDefault(c => c.Id == id);
-            Console.WriteLine($"Selected connection: {selectedConnection?.Name}");
         }
         else
         {
             selectedConnection = null;
-            Console.WriteLine("No connection selected.");
         }
 
         StateHasChanged();

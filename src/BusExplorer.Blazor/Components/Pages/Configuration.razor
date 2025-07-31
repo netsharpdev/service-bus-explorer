@@ -1,0 +1,131 @@
+@page "/configuration"
+@using BusExplorer.Data.Models
+@rendermode InteractiveServer
+
+@inject IHttpClientFactory HttpClientFactory
+
+<PageTitle>Configuration</PageTitle>
+
+<h1>Configuration</h1>
+
+<h2>Existing Connections</h2>
+
+@if (connections == null)
+{
+    <p><em>Loading connections...</em></p>
+}
+else if (!connections.Any())
+{
+    <p>No connections found. Add a new one below.</p>
+}
+else
+{
+    <table class="table table-bordered table-primary">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Connection String</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var connection in connections)
+            {
+                @if (editingConnection?.Id == connection.Id)
+                {
+                    <tr>
+                        <td><InputText @bind-Value="editingConnection.Name" /></td>
+                        <td><InputText @bind-Value="editingConnection.ConnectionString" /></td>
+                        <td>
+                            <button class="btn btn-success" @onclick="@(() => SaveConnection(editingConnection))">Save</button>
+                            <button class="btn btn-secondary" @onclick="CancelEdit">Cancel</button>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    <tr>
+                        <td>@connection.Name</td>
+                        <td>@connection.ConnectionString</td>
+                        <td>
+                            <button class="btn btn-info" @onclick="@(() => EditConnection(connection))">Edit</button>
+                            <button class="btn btn-danger" @onclick="@(() => DeleteConnection(connection.Id))">Delete</button>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+}
+
+<h2>Add New Connection</h2>
+
+
+
+    <div class="form-group">
+        <label for="name">Name:</label>
+        <input id="name" class="form-control" @bind="newConnection.Name" />
+    </div>
+    <div class="form-group">
+        <label for="connectionString">Connection String:</label>
+        <input id="connectionString" class="form-control"  @bind="newConnection.ConnectionString" />
+    </div>
+
+    <button class="btn btn-primary mt-3" @onclick="@AddConnection">Add</button>
+
+@code {
+    private ServiceBusConnection newConnection = new();
+    private ServiceBusConnection[]? connections;
+    private ServiceBusConnection? editingConnection;
+    private HttpClient _httpClient;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _httpClient = HttpClientFactory.CreateClient("BusExplorer");
+        await LoadConnections();
+    }
+
+    private async Task LoadConnections()
+    {
+        connections = await _httpClient.GetFromJsonAsync<ServiceBusConnection[]>("ServiceBusConnections");
+    }
+    
+    private async Task AddConnection()
+    {
+        await _httpClient.PostAsJsonAsync("ServiceBusConnections", newConnection);
+        newConnection = new();
+        await LoadConnections(); // Refresh the list after adding
+        StateHasChanged();
+    }
+
+    private void EditConnection(ServiceBusConnection connection)
+    {
+        editingConnection = new ServiceBusConnection
+        {
+            Id = connection.Id,
+            Name = connection.Name,
+            ConnectionString = connection.ConnectionString
+        };
+        StateHasChanged();
+    }
+
+    private async Task SaveConnection(ServiceBusConnection connectionToSave)
+    {
+        await _httpClient.PutAsJsonAsync($"ServiceBusConnections/{connectionToSave.Id}", connectionToSave);
+        editingConnection = null;
+        await LoadConnections();
+        StateHasChanged();
+    }
+
+    private async Task DeleteConnection(int id)
+    {
+        await _httpClient.DeleteAsync($"ServiceBusConnections/{id}");
+        await LoadConnections();
+        StateHasChanged();
+    }
+
+    private void CancelEdit()
+    {
+        editingConnection = null;
+    }
+}
