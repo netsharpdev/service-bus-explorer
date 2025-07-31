@@ -1,27 +1,62 @@
 using BusExplorer.Blazor.Components;
+using BusExplorer.Data;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDataProtection()
+    .PersistKeysToDbContext<ApplicationDbContext>();
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("http://busexplorer.api:8080") });
+builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("/") });
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
+// Wait for the database to be ready and apply migrations
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
+using (var scope = app.Services.CreateScope())
 {
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var retries = 5;
+    while (retries > 0)
+    {
+        try
+        {
+            dbContext.Database.Migrate();
+            logger.LogInformation("Database migration successful.");
+            break;
+        }
+        catch (NpgsqlException ex)
+        {
+            logger.LogError(ex, "An error occurred while migrating the database. Retrying in 5 seconds...");
+            retries--;
+            Thread.Sleep(5000);
+        }
+    }
+}
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
 
 app.UseStaticFiles();
+app.UseAntiforgery();
 
-
+app.MapControllers();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

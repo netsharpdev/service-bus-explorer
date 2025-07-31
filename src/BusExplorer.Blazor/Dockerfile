@@ -4,9 +4,8 @@ WORKDIR /source
 
 # Copy solution and project files to restore dependencies
 COPY BusExplorer.sln .
-COPY src/BusExplorer.Api/BusExplorer.Api.csproj ./src/BusExplorer.Api/
-COPY src/BusExplorer.Data/BusExplorer.Data.csproj ./src/BusExplorer.Data/
-COPY src/BusExplorer.Blazor/BusExplorer.Blazor.csproj ./src/BusExplorer.Blazor/
+COPY src/BusExplorer.Blazor/*.csproj ./src/BusExplorer.Blazor/
+COPY src/BusExplorer.Data/*.csproj ./src/BusExplorer.Data/
 RUN dotnet restore BusExplorer.sln
 
 # Copy the rest of the source code

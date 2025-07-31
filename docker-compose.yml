@@ -7,17 +7,8 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - busexplorer.api
-
-  busexplorer.api:
-    image: ${DOCKER_REGISTRY-}busexplorerapi
-    build:
-      context: .
-      dockerfile: src/BusExplorer.Api/Dockerfile
-    ports:
-      - "5001:8080"
-    depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   db:
     image: postgres
@@ -28,3 +19,8 @@ services:
       - POSTGRES_DB=busexplorer
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d busexplorer"]
+      interval: 5s
+      timeout: 5s
+      retries: 5

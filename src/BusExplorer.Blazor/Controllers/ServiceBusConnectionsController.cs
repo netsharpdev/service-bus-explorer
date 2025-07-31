@@ -3,7 +3,7 @@ using BusExplorer.Data.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace BusExplorer.Api.Controllers;
+namespace BusExplorer.Blazor.Controllers;
 
 [ApiController]
 [Route("[controller]")]
