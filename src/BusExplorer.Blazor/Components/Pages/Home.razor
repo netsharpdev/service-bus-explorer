@@ -1,32 +1,18 @@
 @page "/"
-@rendermode InteractiveServer
 @using BusExplorer.Data.Models
+@using BusExplorer.Blazor.Models
+@rendermode InteractiveServer
 @inject IHttpClientFactory HttpClientFactory
-
-<PageTitle>Home</PageTitle>
-
-<h1>Service Bus Explorer</h1>
-
-@if (connections == null)
-{
-    <p><em>Loading...</em></p>
-}
-else
-{
-    <select @onchange="OnChangeConnection">
-        <option value="">-- Select a Connection --</option>
-        @foreach (var connection in connections)
-        {
-            <option value="@connection.Id">@connection.Name</option>
-        }
-    </select>
-}
 
 @code {
     private HttpClient _httpClient;
-    private ServiceBusConnection? selectedConnection;
     private ServiceBusConnection[]? connections;
+    private ServiceBusConnection? selectedConnection;
     private int selectedConnectionId;
+    private List<TopicInfo>? topics;
+    private string? searchTerm;
+    private List<TopicInfo>? filteredTopics;
+    private TopicInfo? expandedTopic;
 
     protected override void OnInitialized()
     {
@@ -38,17 +24,172 @@ else
         connections = await _httpClient.GetFromJsonAsync<ServiceBusConnection[]>("ServiceBusConnections");
     }
 
-    private async Task OnChangeConnection(ChangeEventArgs e)
+    private int SelectedConnectionId
     {
-        if (int.TryParse(e.Value?.ToString(), out int id))
+        get => selectedConnectionId;
+        set
         {
-            selectedConnection = connections?.FirstOrDefault(c => c.Id == id);
+            selectedConnectionId = value;
+            Console.WriteLine($"Dropdown value changed to: {value}");
+            selectedConnection = connections?.FirstOrDefault(c => c.Id == value);
+            Console.WriteLine($"Connection found: {selectedConnection != null}");
+            StateHasChanged();
+
+            if (selectedConnection != null)
+            {
+                _ = LoadTopics(selectedConnection.ConnectionString);
+            }
+            else
+            {
+                topics = null;
+                filteredTopics = null;
+                expandedTopic = null;
+            }
+        }
+    }
+
+    private async Task LoadTopics(string connectionString)
+    {
+        try
+        {
+            topics = await _httpClient.GetFromJsonAsync<List<TopicInfo>>($"ServiceBusExplorer/topics?connectionString={Uri.EscapeDataString(connectionString)}");
+            filteredTopics = topics;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading topics: {ex.Message}");
+            topics = null;
+            filteredTopics = null;
+        }
+        StateHasChanged();
+    }
+
+    private void FilterTopics()
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            filteredTopics = topics;
         }
         else
         {
-            selectedConnection = null;
+            filteredTopics = topics?.Where(t => t.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)).ToList();
         }
-
         StateHasChanged();
+    }
+
+    private void ToggleTopicExpansion(TopicInfo topic)
+    {
+        if (expandedTopic == topic)
+        {
+            expandedTopic = null;
+        }
+        else
+        {
+            expandedTopic = topic;
+        }
+        StateHasChanged();
+    }
+}
+
+<PageTitle>Home</PageTitle>
+
+<h1>Service Bus Explorer</h1>
+
+@if (selectedConnection != null)
+{
+    <h2>Selected Connection: @selectedConnection.Name</h2>
+    <p>Connection String: @selectedConnection.ConnectionString</p>
+}
+
+<h2>Available Connections</h2>
+
+@if (connections == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <select @bind="SelectedConnectionId">
+        <option value="">-- Select a Connection --</option>
+        @foreach (var connection in connections)
+        {
+            <option value="@connection.Id">@connection.Name</option>
+        }
+    </select>
+}
+
+<hr />
+
+@if (selectedConnection != null)
+{
+    <h2>Topics</h2>
+
+    <input type="text" @bind-value="searchTerm" @oninput="FilterTopics" placeholder="Search topics..." />
+
+    @if (filteredTopics == null)
+    {
+        <p><em>Loading topics...</em></p>
+    }
+    else if (!filteredTopics.Any())
+    {
+        <p>No topics found for the selected connection or search term.</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Topic Name</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var topic in filteredTopics)
+                {
+                    <tr>
+                        <td>@topic.Name</td>
+                        <td>
+                            <button class="btn btn-info" @onclick="@(() => ToggleTopicExpansion(topic))">
+                                @(expandedTopic == topic ? "Collapse" : "Expand")
+                            </button>
+                        </td>
+                    </tr>
+                    @if (expandedTopic == topic)
+                    {
+                        <tr>
+                            <td colspan="2">
+                                <h4>Subscriptions for @topic.Name</h4>
+                                @if (!topic.Subscriptions.Any())
+                                {
+                                    <p>No subscriptions found for this topic.</p>
+                                }
+                                else
+                                {
+                                    <table class="table table-bordered">
+                                        <thead>
+                                            <tr>
+                                                <th>Subscription Name</th>
+                                                <th>Active Messages</th>
+                                                <th>Dead Letter Messages</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var sub in topic.Subscriptions)
+                                            {
+                                                <tr>
+                                                    <td>@sub.Name</td>
+                                                    <td>@sub.MessageCount</td>
+                                                    <td>@sub.DeadLetterMessageCount</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
     }
 }
